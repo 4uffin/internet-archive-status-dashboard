@@ -7,6 +7,7 @@
 <link rel="icon" id="fav">
 <link rel="manifest" href="manifest.webmanifest">
 <meta name="theme-color" content="#000000">
+<meta name="description" content="Live status dashboard for the Internet Archive and Wayback Machine, with a forecast of the best times to archive.">
 <link rel="apple-touch-icon" href="icon-192.png">
 <style>
 :root{--ink:#222;--mut:#666;--line:#ddd;--bg:#fff;--soft:#f5f5f7;--blue:#428bca;--ok:#4cae4c;--warn:#f0ad4e;--bad:#d9534f;--nodata:#ddd;--rule:#eee;--field:#fff;color-scheme:light}
@@ -75,54 +76,61 @@ footer{color:var(--mut);font-size:12px;text-align:center;padding:24px 18px 36px}
 button:focus-visible,input:focus-visible,select:focus-visible,a:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
 @media (prefers-reduced-motion:reduce){.dot{animation:none}.meter i{transition:none}}
 @media (max-width:520px){.score{font-size:42px}.banner h1{font-size:18px}.nav{gap:8px}}
+.btn:disabled,.nav button:disabled{opacity:.5;cursor:not-allowed}
+.sub a{color:#8ec1ef}.sub .jump{margin-left:auto}
+h2{scroll-margin-top:60px}
+.pill,.met span,.stat,.scale span,.score,.tname,.sec,th[title],.legend span[title],.brand,.meter{cursor:help}
+@media (min-width:760px){.nav{position:sticky;top:0;z-index:20}}
+@media (prefers-reduced-motion:no-preference){html{scroll-behavior:smooth}}
 </style>
 </head>
 <body>
 <div class="nav">
   <svg viewBox="0 0 40 40" fill="#fff" aria-hidden="true"><path d="M20 3 3 12v3h34v-3zM6 17h4v14H6zm8 0h4v14h-4zm8 0h4v14h-4zm8 0h4v14h-4zM3 33h34v4H3z"/></svg>
-  <div class="brand">INTERNET ARCHIVE<small>WAYBACK STATUS &amp; ARCHIVE TIDES</small></div>
+  <div class="brand" title="Unofficial status dashboard for the Internet Archive and the Wayback Machine">INTERNET ARCHIVE<small>WAYBACK STATUS &amp; ARCHIVE TIDES</small></div>
   <div class="sp"></div>
-  <span id="clock" style="font-size:12px;color:#bbb"></span>
+  <span id="clock" style="font-size:12px;color:#bbb" title="Current time (follows the Times setting)"></span>
   <button id="alert">🔔 Alerts: off</button>
   <select id="thr" title="Also notify when the tide score drops below this"><option value="20">low tide below 20</option><option value="30">low tide below 30</option><option value="40">low tide below 40</option></select>
-  <button id="theme">Theme: auto</button><button id="tz">Times: local</button><button id="nums">Scores: hidden</button>
-  <button id="refresh">Refresh now</button>
+  <button id="theme" title="Cycle the theme: auto (follows your system), dark, light">Theme: auto</button><button id="tz" title="Show every time on the page in your local time zone or in UTC">Times: local</button><button id="nums" title="Show the numeric tide score (0–100) inside the heatmap cells and 24-hour bars">Scores: hidden</button>
+  <button id="refresh" title="Run every probe now (keyboard shortcut: R)">Refresh now</button>
 </div>
-<div class="sub"><span>Live probes from your browser</span><span>Auto-refresh every 30s</span><span id="ctl">Control: checking…</span><span id="next"></span></div>
+<div class="sub"><span title="Probes run from this browser, so results reflect your own connection to the Archive">Live probes from your browser</span><span title="Probes run again every 30 seconds while this page is open">Auto-refresh every 30s</span><span id="ctl" title="Control probe: requests to non-Archive sites (Google, Cloudflare). If those fail too, the problem is your connection, not the Archive.">Control: checking…</span><span id="next"></span><span class="jump">Jump to: <a href="#status">Status</a> · <a href="#history">History</a> · <a href="#glance">At a glance</a> · <a href="#tides">Tides</a> · <a href="#accuracy">Accuracy</a></span></div>
 
 <div class="wrap">
-  <div class="banner" id="banner" role="status" aria-live="polite"><div class="dot"></div><div><h1 id="bt">Checking services…</h1><p id="bs">Probing archive.org endpoints</p></div></div>
+  <div class="banner" id="banner" role="status" aria-live="polite" title="Overall status from this browser’s probes, adjusted by the shared collector’s view when one is connected"><div class="dot"></div><div><h1 id="bt">Checking services…</h1><p id="bs">Probing archive.org endpoints</p></div></div>
 
-  <h2>Service status</h2>
-  <div class="grid" id="svc"></div>
+  <h2 id="status">Service status</h2>
+  <div class="grid" id="svc"><div class="card" style="grid-column:1/-1">Running the first probes…</div></div>
 
-  <h2>Uptime history</h2>
-  <div class="panel hist"><div id="hist"></div><p class="note">Saved in this browser (IndexedDB) in 10-minute buckets for 90 days. It only records while this page is open. Gray means no data; orange means slow (against that endpoint’s own baseline) or partly failing.</p></div>
+  <h2 id="history">Uptime history</h2>
+  <div class="panel hist"><div id="hist"></div><p class="note">Saved in this browser (IndexedDB) in 10-minute buckets for 90 days. It only records while this page is open. Gray means no data; orange means slow (against that endpoint’s own baseline) or partly failing.</p>
+    <div class="row" style="margin-top:8px"><button class="btn alt" id="hexp" title="Download everything saved in this browser as a JSON file">Export history (JSON)</button><button class="btn alt" id="hclr" title="Delete the uptime history and hour-by-hour observations saved in this browser (asks first)">Clear local history</button></div></div>
   <div class="panel" style="margin-top:12px"><b>Recent incidents</b><ul class="up" id="inc" style="margin-top:8px"></ul></div>
   <div class="panel hist" style="margin-top:12px"><b>Shared collector</b> <span class="note" id="cst">· not connected</span><span id="cinc" style="margin-left:8px;font-size:12px"></span>
     <p class="note" style="margin:4px 0 8px">Optional. A scheduled job (see the ia-collector folder) probes around the clock; paste its data.json URL to get 24/7 history here and let real data drive Archive Tides.</p>
-    <div class="row"><input id="curl" placeholder="https://raw.githubusercontent.com/you/repo/data/data.json"><button class="btn" id="csave">Load</button></div>
+    <div class="row"><input id="curl" placeholder="https://raw.githubusercontent.com/you/repo/data/data.json" aria-label="Collector data.json URL" title="The raw URL of the data.json your collector publishes"><button class="btn" id="csave" title="Load the collector data now (Enter works too)">Load</button><button class="btn alt" id="ccopy" title="Copy a link to this dashboard that pre-fills this collector URL">Copy link</button></div>
     <div id="rhist" style="margin-top:10px"></div><ul class="up" id="rinc"></ul></div>
 
-  <h2>Archive at a glance</h2>
-  <div class="stats" id="stats"></div>
+  <h2 id="glance">Archive at a glance</h2>
+  <div class="stats" id="stats"><div class="stat"><span>Loading…</span></div></div>
 
   <div class="two" style="margin-top:12px">
     <div class="panel"><b>Latest uploads</b><ul class="up" id="latest" style="margin-top:8px"><li>Loading…</li></ul></div>
     <div class="panel">
       <b>Quick save</b>
       <p class="note" style="margin:4px 0 10px">Check whether a page is already archived, then send it to Save Page Now.</p>
-      <div class="row"><input id="url" placeholder="https://example.com/page" value="https://"><button class="btn" id="chk">Check</button><button class="btn alt" id="sav">Save page now ↗</button></div>
+      <div class="row"><input id="url" placeholder="https://example.com/page" value="https://" inputmode="url" autocomplete="url" aria-label="Page address" title="The page to check or save (https:// is added if you leave it out)"><button class="btn" id="chk">Check</button><button class="btn alt" id="sav">Save page now ↗</button></div>
       <div class="res" id="qres"></div>
     </div>
   </div>
 
-  <h2>Archive Tides · best times to archive</h2>
+  <h2 id="tides">Archive Tides · best times to archive</h2>
   <div class="two">
     <div class="panel">
-      <div class="tide"><div class="score" id="sc">–</div><div><div class="tname" id="tn">–</div><div id="tv" class="note" style="margin:2px 0 0"></div></div></div>
-      <div class="meter"><i id="mk" style="left:0"></i></div>
-      <div class="scale"><span>Low tide</span><span>Rising</span><span>High tide</span><span>Storm surge</span></div>
+      <div class="tide"><div class="score" id="sc" title="Tide score right now: 0 is calmest, 100 is busiest">–</div><div><div class="tname" id="tn" title="Low tide is under 30, rising 30–54, high tide 55–77, storm surge 78 and up">–</div><div id="tv" class="note" style="margin:2px 0 0"></div></div></div>
+      <div class="meter" title="Where the current score sits between calm (green) and busy (red)"><i id="mk" style="left:0"></i></div>
+      <div class="scale"><span title="Score under 30: queues should be short">Low tide</span><span title="Score 30–54: fine for most saves">Rising</span><span title="Score 55–77: expect slower responses">High tide</span><span title="Score 78 and up: busiest hours">Storm surge</span></div>
       <p class="note">Score blends a typical global traffic rhythm (US evenings and European afternoons are the busy swells) with live latency (each endpoint judged against its own baseline) and your own saved observations. A connected shared collector replaces those with 24/7 data.</p>
     </div>
     <div class="panel"><b>Calmest windows ahead</b><div id="wins" style="margin-top:6px"></div></div>
@@ -131,13 +139,14 @@ button:focus-visible,input:focus-visible,select:focus-visible,a:focus-visible{ou
   <div class="panel heat" style="margin-top:12px">
     <b>Seven-day tide chart <span style="font-weight:400;color:var(--mut)">(your local time)</span></b>
     <div id="heat" style="margin-top:8px"></div>
-    <div class="legend"><span>Calm</span><i></i><span>Busy</span><span style="margin-left:10px">○ white dot = this hour is backed by measured data</span><span style="margin-left:10px">▨ hatching = high tide or worse</span></div>
+    <div class="legend"><span title="Lowest forecast load">Calm</span><i></i><span title="Highest forecast load">Busy</span><span style="margin-left:10px" title="This hour of the week has real measurements behind it (from the collector or this browser), not just the traffic model">○ white dot = this hour is backed by measured data</span><span style="margin-left:10px" title="Hatching marks high tide (light) and storm surge (dense) so the chart doesn’t rely on color alone">▨ hatching = high tide or worse</span></div>
   </div>
   <p class="note">The tide model is an estimate, not official Internet Archive data. They publish no load figures, so this uses a typical diurnal traffic pattern. Latency is measured from your own connection.</p>
-  <h2>Forecast accuracy</h2>
+  <h2 id="accuracy">Forecast accuracy</h2>
   <div class="panel" id="acc"></div>
 </div>
-<footer>Not affiliated with the Internet Archive. Data from public archive.org, web.archive.org and openlibrary.org APIs.</footer>
+<noscript><div class="wrap"><div class="panel">This dashboard needs JavaScript to run its live probes.</div></div></noscript>
+<footer>Not affiliated with the Internet Archive. Data from public archive.org, web.archive.org and openlibrary.org APIs. · <a href="https://archive.org" target="_blank" rel="noopener">archive.org</a> · <a href="https://web.archive.org" target="_blank" rel="noopener">Wayback Machine</a> · <a href="https://web.archive.org/save" target="_blank" rel="noopener">Save Page Now</a></footer>
 
 <script>
 const $=id=>document.getElementById(id);
@@ -186,19 +195,20 @@ function refOf(id){
 const slowT=id=>BL[id]?BL[id].slow:3000;
 const stat=(h,id)=>!h.ok?"down":h.ms>slowT(id)?"slow":"up";
 const LBL={up:"Operational",slow:"Slow",down:"Unreachable"};
+const PT={up:"Responded normally.",slow:"Responded, but slower than this endpoint’s usual range.",down:"No valid response: an error, a timeout, or unexpected data."};
 function spark(a,bl){
   if(a.length<2)return'<svg class="spark"></svg>';
   const max=Math.max(...a.map(x=>x.ms),500,bl?bl.slow*1.1:0),w=300,h=34,st=w/(a.length-1),y=v=>(h-3-(v/max)*(h-6)).toFixed(1);
   const p=a.map((x,i)=>`${(i*st).toFixed(1)},${(h-3-(x.ms/max)*(h-6)).toFixed(1)}`).join(" ");
-  return`<svg class="spark" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none">${bl?`<line x1="0" x2="${w}" y1="${y(bl.med)}" y2="${y(bl.med)}" stroke="#4cae4c" stroke-dasharray="3 3"/><line x1="0" x2="${w}" y1="${y(bl.slow)}" y2="${y(bl.slow)}" stroke="#f0ad4e" stroke-dasharray="3 3"/>`:""}<polyline fill="none" stroke="#428bca" stroke-width="1.6" points="${p}"/></svg>`;
+  return`<svg class="spark" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none"><title>Latency of the last ${a.length} checks. Dashed green: typical. Dashed orange: slow threshold.</title>${bl?`<line x1="0" x2="${w}" y1="${y(bl.med)}" y2="${y(bl.med)}" stroke="#4cae4c" stroke-dasharray="3 3"/><line x1="0" x2="${w}" y1="${y(bl.slow)}" y2="${y(bl.slow)}" stroke="#f0ad4e" stroke-dasharray="3 3"/>`:""}<polyline fill="none" stroke="#428bca" stroke-width="1.6" points="${p}"/></svg>`;
 }
 function renderSvc(){
   $("svc").innerHTML=SERVICES.map(s=>{
     const a=hist[s.id],l=a[a.length-1];if(!l)return"";
     const st=stat(l,s.id),bl=BL[s.id],up=Math.round(a.filter(x=>x.ok).length/a.length*100);
     const avg=Math.round(a.filter(x=>x.ok).reduce((n,x)=>n+x.ms,0)/Math.max(1,a.filter(x=>x.ok).length));
-    return`<div class="card"><div class="top"><div><b>${esc(s.name)}</b><div class="d">${esc(s.url.replace(/^https:\/\//,"").split("?")[0])}</div></div><span class="pill ${st}">${LBL[st]}</span></div>
-    <div class="met"><span><b>${l.ok?Math.round(l.ms)+" ms":"—"}</b>latency</span><span><b>${bl?Math.round(bl.med)+" ms":"…"}</b>typical${l.ok&&bl?" · "+(l.ms/bl.med).toFixed(1)+"×":""}</span><span><b>${up}%</b>uptime</span></div>${spark(a,bl)}<div class="d" style="margin-top:4px">${bl?"Slow above "+Math.round(bl.slow)+" ms · baseline from "+bl.n+" ten-minute samples":"Learning baseline… using 3000 ms until about 2 hours of data is saved"}</div>${second(s.id,st)}</div>`;
+    return`<div class="card"><div class="top"><div><b>${esc(s.name)}</b><div class="d"><a href="${esc(s.url)}" target="_blank" rel="noopener" title="Open this endpoint in a new tab">${esc(s.url.replace(/^https:\/\//,"").split("?")[0])}</a></div></div><span class="pill ${st}" title="${esc(PT[st])}">${LBL[st]}</span></div>
+    <div class="met"><span title="Response time of the most recent check"><b>${l.ok?Math.round(l.ms)+" ms":"—"}</b>latency</span><span title="This endpoint’s usual latency: the median of its last 7 days of 10-minute averages. The × figure compares the latest check with it."><b>${bl?Math.round(bl.med)+" ms":"…"}</b>typical${l.ok&&bl?" · "+(l.ms/bl.med).toFixed(1)+"×":""}</span><span title="Share of successful checks in this session (up to the last 60 checks)"><b>${up}%</b>uptime</span></div>${spark(a,bl)}<div class="d" style="margin-top:4px">${bl?"Slow above "+Math.round(bl.slow)+" ms · baseline from "+bl.n+" ten-minute samples":"Learning baseline… using 3000 ms until about 2 hours of data is saved"}</div>${second(s.id,st)}</div>`;
   }).join("");
   const sts=SERVICES.map(s=>{const l=hist[s.id].slice(-1)[0];return l&&stat(l,s.id)}).filter(Boolean);
   const down=sts.filter(x=>x==="down").length,slow=sts.filter(x=>x==="slow").length,B=$("banner");
@@ -229,18 +239,19 @@ async function runProbes(){
   if(rat.length){const m=rat[rat.length>>1];cycles.push({m,down:res.filter(r=>!r.ok).length});if(cycles.length>40)cycles.shift();recordObs(m)}
   renderSvc();renderTides();renderHist();
 }
+const STAT_T={texts:"Books, documents and other text items",movies:"Videos and films",audio:"Audio recordings",software:"Software and games",image:"Images",web:"Web collections (archived crawls)"};
 const nf=n=>n>=1e9?(n/1e9).toFixed(2)+" B":n>=1e6?(n/1e6).toFixed(1)+" M":n.toLocaleString();
 async function loadStats(){
   const types=["texts","movies","audio","software","image","web"];
   const out=await Promise.all(types.map(async t=>{
     try{const r=await fetch(`https://archive.org/advancedsearch.php?q=mediatype%3A${t}&rows=0&output=json`);return[t,(await r.json()).response.numFound]}catch(e){return[t,null]}
   }));
-  $("stats").innerHTML=out.map(([t,n])=>`<div class="stat"><b>${n==null?"—":nf(n)}</b><span>${t==="web"?"web collections":t==="movies"?"videos":t==="texts"?"texts":t}</span></div>`).join("");
+  $("stats").innerHTML=out.map(([t,n])=>`<div class="stat" title="${n==null?"Couldn’t load this count":n.toLocaleString()+" items. "+STAT_T[t]}"><b>${n==null?"—":nf(n)}</b><span>${t==="web"?"web collections":t==="movies"?"videos":t==="texts"?"texts":t}</span></div>`).join("");
   try{
     const q="mediatype%3A(movies+OR+texts+OR+audio+OR+software)";
     const r=await fetch(`https://archive.org/advancedsearch.php?q=${q}&fl%5B%5D=identifier&fl%5B%5D=title&fl%5B%5D=mediatype&sort%5B%5D=addeddate+desc&rows=7&output=json`);
     const d=(await r.json()).response.docs;
-    $("latest").innerHTML=d.map(x=>`<li><a href="https://archive.org/details/${encodeURIComponent(x.identifier)}" target="_blank" rel="noopener">${esc(Array.isArray(x.title)?x.title[0]:(x.title||x.identifier))}</a><small>${esc(x.mediatype||"")}</small></li>`).join("");
+    $("latest").innerHTML=d.map(x=>`<li><a href="https://archive.org/details/${encodeURIComponent(x.identifier)}" target="_blank" rel="noopener" title="Open archive.org/details/${esc(x.identifier)}">${esc(Array.isArray(x.title)?x.title[0]:(x.title||x.identifier))}</a><small>${esc(x.mediatype||"")}</small></li>`).join("");
   }catch(e){$("latest").innerHTML="<li>Couldn’t load recent uploads.</li>"}
 }
 
@@ -301,7 +312,7 @@ function renderTides(){
   pick.sort((a,b)=>a.m-b.m);
   $("wins").innerHTML=pick.map((p,i)=>{
     const end=new Date(p.t.getTime()+3*36e5),hrs=Math.max(0,Math.round((p.t-now)/36e5));
-    return`<div class="win"><div><span class="rk">${i+1}</span><b>${dayLbl(p.t,now)} ${fmtH(p.t)} – ${fmtH(end)}</b></div><em>${hrs<1?"starting now":"in "+hrs+"h"} · load ~${Math.round(p.m)} · ${tname(p.m)}</em></div>`;
+    return`<div class="win"><div><span class="rk">${i+1}</span><b>${dayLbl(p.t,now)} ${fmtH(p.t)} – ${fmtH(end)}</b></div><em title="Average forecast score over this 3-hour window (lower is calmer)">${hrs<1?"starting now":"in "+hrs+"h"} · load ~${Math.round(p.m)} · ${tname(p.m)}</em></div>`;
   }).join("");
   const best=pick[0];
   $("tv").textContent=s<30?"Great time to archive. Queues should be short.":s<55?"Fine for most saves. Big batches may be slower.":"Busy waters. Save Page Now may be slow; "+(best?"the calmest window starts "+dayLbl(best.t,now).toLowerCase()+" at "+fmtH(best.t)+".":"try later.");
@@ -380,7 +391,7 @@ function strip(id,M){
   return'<div class="strip">'+h+"</div>";
 }
 function renderHist(){
-  $("hist").innerHTML="<table><thead><tr><th></th><th>Last 24 hours</th><th>24h</th><th>7d</th><th>90d</th></tr></thead><tbody>"+
+  $("hist").innerHTML="<table><thead><tr><th></th><th title='Each segment is 30 minutes. Green: every check passed. Orange: slow or partly failing. Red: mostly failing. Gray: no data.'>Last 24 hours</th><th title='Share of checks that succeeded in the last 24 hours'>24h</th><th title='Share of checks that succeeded in the last 7 days'>7d</th><th title='Share of checks that succeeded in the last 90 days'>90d</th></tr></thead><tbody>"+
     SERVICES.map(s=>`<tr><td>${esc(s.name)}</td><td>${strip(s.id)}</td><td>${upt(s.id,1)}</td><td>${upt(s.id,7)}</td><td>${upt(s.id,90)}</td></tr>`).join("")+"</tbody></table>";
   const keys=[...B.keys()].sort((a,b)=>a-b),inc=[];
   SERVICES.forEach(s=>{let cur=null;keys.forEach(k=>{const v=B.get(k).s[s.id];if(!v||!v.n)return;
@@ -405,7 +416,11 @@ function alertCheck(res){
     else{streak[id]=0;if(wasDown[id]){wasDown[id]=0;notify(s.name+" recovered","Responding normally again ("+Math.round(res[i].ms)+" ms).")}}});
 }
 function tideAlert(s){if(prevTide!==null&&prevTide>=thr&&s<thr)notify("Low tide: good time to archive","Archive Tides score dropped to "+s+" ("+tname(s)+").");prevTide=s}
-function altLabel(){const p="Notification" in window?Notification.permission:"none";$("alert").textContent="🔔 Alerts: "+(alertsOn?"on"+(p==="granted"?"":" (in-page)"):"off")}
+function altLabel(){
+  const p="Notification" in window?Notification.permission:"none";
+  $("alert").textContent="🔔 Alerts: "+(alertsOn?"on"+(p==="granted"?"":" (in-page)"):"off");
+  $("alert").title=alertsOn?"Alerts are on: you’ll be told when a service fails two checks in a row, recovers, or the tide drops below the chosen level."+(p==="granted"?"":" Desktop notifications aren’t permitted here, so you’ll only see in-page messages.")+" Click to turn off.":"Click to be notified when a service goes down or recovers, or when the tide reaches low tide. This only works while the page is open. For alerts when it’s closed, use the collector’s incident issues.";
+}
 $("alert").onclick=async()=>{
   if(!alertsOn&&"Notification" in window&&Notification.permission==="default"){try{await Notification.requestPermission()}catch(e){}}
   alertsOn=!alertsOn;LS("ia_alerts",alertsOn?"1":"0");altLabel();
@@ -535,7 +550,7 @@ function renderAcc(){
     el.innerHTML=`<b>Does the forecast match reality?</b>
       <p class="note" style="margin:4px 0 10px">Test: the last ${testDays} days (${rows.length} hours). The profile was trained only on the ${Math.round(span-testDays)} days before that. “Measured” means the collector’s latency across endpoints, relative to each one’s normal.</p>
       <p style="margin:0 0 10px">${verdict}</p>
-      <div class="hist"><table><thead><tr><th>Forecast</th><th>Hourly rank agreement (ρ)</th><th>Calmest-window pick: days it beat the average</th><th>Latency saved in that window</th></tr></thead><tbody>`+
+      <div class="hist"><table><thead><tr><th title="Which forecast is being tested">Forecast</th><th title="Spearman rank correlation with measured latency across the test hours. 1 means it ranks hours exactly like the measurements, 0 means no relationship, negative means the opposite.">Hourly rank agreement (ρ)</th><th title="On each full test day, the forecast’s calmest 3-hour window is compared with that day’s average measured latency. This is how often it came out better.">Calmest-window pick: days it beat the average</th><th title="Average reduction in measured latency inside the forecast’s calmest window, compared with the day’s average">Latency saved in that window</th></tr></thead><tbody>`+
       res.map(r=>`<tr><td>${esc(r.name)}</td><td>${r.rho==null?"—":bar(r.rho)+r.rho.toFixed(2)}</td><td>${r.w?Math.round(r.w.hit*100)+"% of "+r.w.n+" days":"—"}</td><td>${r.w?(r.w.gain*100).toFixed(0)+"%":"—"}</td></tr>`).join("")+
       `</tbody></table></div>`+
       (ceil?`<p class="note">A perfect forecast (with hindsight) would have saved about ${(ceil.oracle*100).toFixed(0)}% by picking each day’s best 3-hour window. Picking a window at random saves roughly 0%.</p>`:"")+
@@ -568,13 +583,13 @@ function second(id,st){
   else if(st==="slow"&&rs==="slow"){cls="bad";msg="Collector sees it slow too. Likely the Archive itself."}
   else if(st==="up"&&rs==="slow"){cls="warn";msg="Fine for you, but the collector sees it slow."}
   else if(rs==="slow"){cls="warn";msg="Collector sees it slow."}
-  return`<div class="sec ${cls}"><b>Second opinion</b>${msg}${v.ms?" ("+v.ms+" ms from the collector"+(v.age>=20?", "+v.age+" min old":"")+")":""}</div>`;
+  return`<div class="sec ${cls}" title="The shared collector’s latest result for this endpoint, from a second vantage point (a GitHub runner)"><b>Second opinion</b>${msg}${v.ms?" ("+v.ms+" ms from the collector"+(v.age>=20?", "+v.age+" min old":"")+")":""}</div>`;
 }
 const DEEP=[{id:"play",name:"Wayback playback"},{id:"dl",name:"Item download (storage)"},{id:"img",name:"Thumbnail service"},{id:"spn",name:"Save Page Now (reachable)"},{id:"s3",name:"Upload API (reachable)"}];
 function deepTable(){
   if(![...RB.values()].some(b=>b.s[DEEP[0].id]))return"";
-  return'<h3 style="font-size:12px;margin:18px 0 4px;color:var(--mut);text-transform:uppercase;letter-spacing:1px">Deeper checks (collector only)</h3><table><thead><tr><th></th><th>Now</th><th>Last 24 hours</th><th>24h</th><th>7d</th><th>21d</th></tr></thead><tbody>'+
-    DEEP.map(x=>{const v=remoteView(x.id);return`<tr><td>${esc(x.name)}</td><td>${v?`<span class="pill ${v.st}">${LBL[v.st]}</span>`:"—"}</td><td>${strip(x.id,RB)}</td><td>${upt(x.id,1,RB)}</td><td>${upt(x.id,7,RB)}</td><td>${upt(x.id,21,RB)}</td></tr>`}).join("")+"</tbody></table>"+
+  return'<h3 style="font-size:12px;margin:18px 0 4px;color:var(--mut);text-transform:uppercase;letter-spacing:1px">Deeper checks (collector only)</h3><table><thead><tr><th></th><th title="The collector’s latest result">Now</th><th title="Each segment is 30 minutes of collector checks">Last 24 hours</th><th title="Share of checks that succeeded in the last 24 hours">24h</th><th title="Share of checks that succeeded in the last 7 days">7d</th><th title="Share of checks that succeeded in the last 21 days">21d</th></tr></thead><tbody>'+
+    DEEP.map(x=>{const v=remoteView(x.id);return`<tr><td>${esc(x.name)}</td><td>${v?`<span class="pill ${v.st}" title="${esc(PT[v.st])}">${LBL[v.st]}</span>`:"—"}</td><td>${strip(x.id,RB)}</td><td>${upt(x.id,1,RB)}</td><td>${upt(x.id,7,RB)}</td><td>${upt(x.id,21,RB)}</td></tr>`}).join("")+"</tbody></table>"+
     '<p class="note">These go beyond “does the API answer”: the collector renders a real snapshot, pulls a file from a storage node, and checks that the thumbnail, Save Page Now and upload endpoints respond. The last two are reachability checks only; nothing is ever saved or uploaded.</p>';
 }
 function incidentsOf(M){
@@ -585,7 +600,7 @@ function incidentsOf(M){
 }
 function renderRemote(){
   if(!RB.size){$("rhist").innerHTML="";$("rinc").innerHTML="";return}
-  $("rhist").innerHTML="<table><thead><tr><th></th><th>Last 24 hours (collector)</th><th>24h</th><th>7d</th><th>21d</th></tr></thead><tbody>"+
+  $("rhist").innerHTML="<table><thead><tr><th></th><th title='Each segment is 30 minutes of collector checks. Green: all passed. Orange: slow or partly failing. Red: mostly failing. Gray: no data.'>Last 24 hours (collector)</th><th title='Share of collector checks that succeeded in the last 24 hours'>24h</th><th title='Share of collector checks that succeeded in the last 7 days'>7d</th><th title='Share of collector checks that succeeded in the last 21 days (all the collector keeps)'>21d</th></tr></thead><tbody>"+
     SERVICES.map(s=>`<tr><td>${esc(s.name)}</td><td>${strip(s.id,RB)}</td><td>${upt(s.id,1,RB)}</td><td>${upt(s.id,7,RB)}</td><td>${upt(s.id,21,RB)}</td></tr>`).join("")+"</tbody></table>"+deepTable();
   const inc=incidentsOf(RB);
   $("rinc").innerHTML=inc.length?inc.slice(0,6).map(x=>`<li><b>${esc(x.id)}</b> unreachable<small>${new Date(x.b*6e5).toLocaleString([], {month:"short",day:"numeric",hour:"numeric",minute:"2-digit",timeZone:TZ()})} · ~${(x.e-x.b+1)*10} min</small></li>`).join(""):"<li>No incidents in the collector data.</li>";
@@ -605,6 +620,8 @@ async function loadRemote(){
     renderRemote();renderAcc();if(hist[SERVICES[0].id].length)renderSvc();renderTides();
   }catch(e){$("cst").textContent="· couldn’t load that URL (it should be the raw data.json of a public repo)"}
 }
+{const m=(location.search+"&"+location.hash.slice(1)).match(/collector=([^&]+)/);
+  if(m){try{const u=decodeURIComponent(m[1]);if(/^https:\/\//.test(u)){rUrl=u;LS("ia_col",u)}}catch(e){}}}
 $("curl").value=rUrl;$("csave").onclick=()=>{rUrl=$("curl").value.trim();LS("ia_col",rUrl);loadRemote()};
 
 /* ---------- display preferences ---------- */
@@ -617,14 +634,54 @@ $("nums").onclick=()=>{showNums=!showNums;sv("ia_nums",showNums?"1":"0");applyPr
 applyTheme();applyPrefs();
 if("serviceWorker" in navigator&&/^https?:/.test(location.protocol))navigator.serviceWorker.register("sw.js").catch(()=>{});
 
+/* ---------- quality of life ---------- */
+const qvalid=()=>{try{return !!new URL(norm($("url").value)).hostname}catch(e){return false}};
+function qsync(){
+  const v=qvalid();$("chk").disabled=!v;$("sav").disabled=!v;
+  $("chk").title=v?"Look up the newest Wayback snapshot of this page":"Enter a page address first";
+  $("sav").title=v?"Open Save Page Now for this page in a new tab, which starts archiving it":"Enter a page address first";
+}
+{const q=_ls("ia_qurl");if(q)$("url").value=q}
+$("url").addEventListener("input",()=>{qsync();sv("ia_qurl",$("url").value)});
+$("url").addEventListener("keydown",e=>{if(e.key==="Enter"&&!$("chk").disabled)$("chk").click()});
+$("curl").addEventListener("keydown",e=>{if(e.key==="Enter")$("csave").click()});
+qsync();
+$("ccopy").onclick=async()=>{
+  const b=$("ccopy");
+  if(!rUrl){$("cst").textContent="· enter and load a collector URL first";return}
+  const link=location.origin+location.pathname+"#collector="+encodeURIComponent(rUrl);
+  try{await navigator.clipboard.writeText(link);b.textContent="Copied ✓"}catch(e){prompt("Copy this link:",link)}
+  setTimeout(()=>{b.textContent="Copy link"},1500);
+};
+$("hexp").onclick=()=>{
+  const blob=new Blob([JSON.stringify({exported:new Date().toISOString(),bucketMinutes:10,buckets:[...B.values()]},null,1)],{type:"application/json"});
+  const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="ia-status-history.json";a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+};
+$("hclr").onclick=()=>{
+  if(!confirm("Delete all uptime history and hour-by-hour observations saved in this browser? This can’t be undone."))return;
+  B.clear();obs={};try{localStorage.removeItem("ia_obs2")}catch(e){}
+  try{if(db)db.transaction("b","readwrite").objectStore("b").clear()}catch(e){}
+  calcBL();renderHist();renderSvc();renderTides();
+};
+document.addEventListener("keydown",e=>{
+  if(e.ctrlKey||e.metaKey||e.altKey||/^(INPUT|SELECT|TEXTAREA)$/.test(e.target.tagName))return;
+  if(e.key==="r"||e.key==="R")$("refresh").click();
+});
+document.addEventListener("visibilitychange",()=>{if(!document.hidden&&Date.now()-lastRun>30000)cycle()});
+
 /* ---------- loop ---------- */
 let left=30;
-async function cycle(){left=30;await runProbes()}
+let lastRun=0,busy=false;
+async function cycle(){
+  if(busy)return;busy=true;left=30;$("refresh").disabled=true;
+  try{await runProbes()}finally{busy=false;lastRun=Date.now();$("refresh").disabled=false}
+}
 $("refresh").onclick=()=>{cycle();loadStats()};
 setInterval(()=>{
   $("clock").textContent=new Date().toLocaleTimeString([], {timeZone:TZ()})+(useUTC?" UTC":"");
   left--;if(left<=0)cycle();
-  $("next").textContent="Next check in "+left+"s";
+  $("next").textContent=(lastRun?"Last checked "+new Date(lastRun).toLocaleTimeString([], {timeZone:TZ()})+" · ":"")+"next in "+left+"s";
 },1000);
 renderTides();loadHist().then(()=>{renderHist();cycle()});renderAcc();loadStats();loadRemote();setInterval(loadStats,300000);setInterval(loadRemote,300000);
 </script>
