@@ -108,8 +108,8 @@ h2{scroll-margin-top:60px}
     <div class="row" style="margin-top:8px"><button class="btn alt" id="hexp" title="Download everything saved in this browser as a JSON file">Export history (JSON)</button><button class="btn alt" id="hclr" title="Delete the uptime history and hour-by-hour observations saved in this browser (asks first)">Clear local history</button></div></div>
   <div class="panel" style="margin-top:12px"><b>Recent incidents</b><ul class="up" id="inc" style="margin-top:8px"></ul></div>
   <div class="panel hist" style="margin-top:12px"><b>Shared collector</b> <span class="note" id="cst">· not connected</span><span id="cinc" style="margin-left:8px;font-size:12px"></span>
-    <p class="note" style="margin:4px 0 8px">Optional. A scheduled job (see the ia-collector folder) probes around the clock; paste its data.json URL to get 24/7 history here and let real data drive Archive Tides.</p>
-    <div class="row"><input id="curl" placeholder="https://raw.githubusercontent.com/you/repo/data/data.json" aria-label="Collector data.json URL" title="The raw URL of the data.json your collector publishes"><button class="btn" id="csave" title="Load the collector data now (Enter works too)">Load</button><button class="btn alt" id="ccopy" title="Copy a link to this dashboard that pre-fills this collector URL">Copy link</button></div>
+    <p class="note" style="margin:4px 0 8px">Optional. A scheduled job (see the project README) probes around the clock; paste its data.json URL to get 24/7 history here and let real data drive Archive Tides.</p>
+    <div class="row"><input id="curl" placeholder="https://raw.githubusercontent.com/OWNER/REPO/data/data.json" aria-label="Collector data.json URL" title="The raw URL of the data.json your collector publishes"><button class="btn" id="csave" title="Load the collector data now (Enter works too)">Load</button><button class="btn alt" id="ccopy" title="Copy a link to this dashboard that pre-fills this collector URL">Copy link</button></div>
     <div id="rhist" style="margin-top:10px"></div><ul class="up" id="rinc"></ul></div>
 
   <h2 id="glance">Archive at a glance</h2>
