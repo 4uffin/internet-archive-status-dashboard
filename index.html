@@ -41,7 +41,6 @@ h2{font-size:12px;text-transform:uppercase;letter-spacing:1.5px;color:var(--mut)
 .two{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 @media(max-width:760px){.two{grid-template-columns:1fr}}
 .panel{background:var(--bg);border:1px solid var(--line);border-radius:3px;padding:16px}
-.caps li{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}.caps li .ago{color:var(--mut);font-size:11px;margin-left:auto;white-space:nowrap}.caps li .sc{font-size:10px;color:var(--mut);border:1px solid var(--line);border-radius:3px;padding:0 4px}.caps li .sc.bad{color:var(--bad);border-color:var(--bad)}.caps li button{background:none;border:0;color:var(--mut);cursor:pointer;font-size:14px;line-height:1;padding:0 2px}.caps li button:hover{color:var(--bad)}
 ul.up{list-style:none;margin:0;padding:0}ul.up li{padding:6px 0;border-bottom:1px solid var(--rule);font-size:13px}ul.up li:last-child{border:0}ul.up small{color:var(--mut);margin-left:6px;text-transform:uppercase;font-size:10px}
 .tide{display:flex;align-items:center;gap:18px;flex-wrap:wrap}
 .score{font-size:54px;font-weight:300;line-height:1}.tname{font-size:20px;font-weight:600}
@@ -125,11 +124,6 @@ h2{scroll-margin-top:60px}
       <div class="res" id="qres"></div>
     </div>
   </div>
-
-  <div class="panel" style="margin-top:12px"><b>Recent Wayback captures</b> <span class="note" id="capst"></span>
-    <p class="note" style="margin:4px 0 8px">Newest capture of each watched page, from the Wayback CDX index. Wayback has no public feed of every capture, so this follows the pages you pick.</p>
-    <ul class="up caps" id="caps"><li>Loading…</li></ul>
-    <div class="row" style="margin-top:8px"><input id="capurl" placeholder="Add a page, e.g. example.com" aria-label="Page to watch for new captures" title="Add a page to the watch list (saved in this browser)"><button class="btn" id="capadd" title="Add this page to the watch list">Watch</button><button class="btn alt" id="capreset" title="Restore the default watch list">Reset list</button></div></div>
 
   <h2 id="tides">Archive Tides · best times to archive</h2>
   <div class="two">
@@ -350,37 +344,6 @@ function renderTides(){
   $("heat").innerHTML=html+"</tbody></table>";
 }
 
-/* ---------- Recent Wayback captures (CDX) ---------- */
-const CAP_DEF=["archive.org","wikipedia.org","bbc.com/news","nytimes.com","github.com","reddit.com"];
-let CAPS=CAP_DEF.slice();try{const v=JSON.parse(localStorage.getItem("ia_caps")||"null");if(Array.isArray(v)&&v.length)CAPS=v.filter(x=>typeof x==="string").slice(0,12)}catch(e){}
-const saveCaps=()=>{try{localStorage.setItem("ia_caps",JSON.stringify(CAPS))}catch(e){}};
-const tsDate=t=>new Date(Date.UTC(+t.slice(0,4),+t.slice(4,6)-1,+t.slice(6,8),+t.slice(8,10),+t.slice(10,12),+t.slice(12,14)));
-const agoS=d=>{const m=Math.max(0,Math.round((Date.now()-d)/6e4));return m<1?"just now":m<60?m+" min ago":m<1440?Math.floor(m/60)+" h ago":Math.floor(m/1440)+" d ago"};
-/* newest n captures of a page; negative limit asks the CDX index for the last rows */
-async function cdxLatest(u,n,days){
-  const f=new Date(Date.now()-days*864e5),from=f.getUTCFullYear()+String(f.getUTCMonth()+1).padStart(2,"0")+String(f.getUTCDate()).padStart(2,"0");
-  const r=await fetch(`https://web.archive.org/cdx/search/cdx?url=${encodeURIComponent(u)}&output=json&fl=timestamp,original,statuscode&from=${from}&limit=-${n}`);
-  if(!r.ok)throw new Error(r.status);
-  const j=await r.json();return Array.isArray(j)?j.slice(1).reverse():[];
-}
-const capLine=(c,label)=>{const d=tsDate(c[0]);return`<li><a href="https://web.archive.org/web/${esc(c[0])}/${esc(c[1])}" target="_blank" rel="noopener" title="Open this capture from ${esc(d.toLocaleString([], {timeZone:TZ()}))}${useUTC?" UTC":""}">${esc(label)}</a><span class="sc${/^[45]/.test(c[2])?" bad":""}" title="HTTP status the Archive recorded for this capture">${esc(c[2]||"—")}</span><span class="ago" title="${esc(d.toLocaleString([], {timeZone:TZ()}))}${useUTC?" UTC":""}">${agoS(d)}</span></li>`};
-let capBusy=false;
-async function loadCaptures(){
-  if(capBusy)return;capBusy=true;
-  const rows=[];let fail=0,i=0;
-  /* two at a time, to stay polite to the CDX index */
-  const worker=async()=>{while(i<CAPS.length){const k=i++,u=CAPS[k];
-    try{const c=await cdxLatest(u,1,14);rows[k]={u,c:c[0]||null}}catch(e){fail++;rows[k]={u,err:1}}}};
-  try{await Promise.all([worker(),worker()])}finally{capBusy=false}
-  $("caps").innerHTML=rows.map((x,k)=>x.c?capLine(x.c,x.u).replace(/<\/li>$/,`<button data-i="${k}" title="Stop watching ${esc(x.u)}" aria-label="Remove ${esc(x.u)}">×</button></li>`)
-    :`<li><span title="${x.err?"The CDX index didn’t answer for this page":"No capture in the last 14 days"}">${esc(x.u)}</span><span class="ago">${x.err?"couldn’t load":"none in 14 days"}</span><button data-i="${k}" title="Stop watching ${esc(x.u)}" aria-label="Remove ${esc(x.u)}">×</button></li>`).join("")||"<li>Nothing watched yet. Add a page below.</li>";
-  $("capst").textContent=fail&&fail===rows.length?"· CDX index unreachable":"· updated "+new Date().toLocaleTimeString([], {timeZone:TZ()});
-}
-$("caps").onclick=e=>{const b=e.target.closest("button[data-i]");if(!b)return;CAPS.splice(+b.dataset.i,1);saveCaps();loadCaptures()};
-const addCap=()=>{let u=$("capurl").value.trim().replace(/^https?:\/\//i,"");if(!u)return;if(!CAPS.includes(u)&&CAPS.length<12){CAPS.push(u);saveCaps()}$("capurl").value="";loadCaptures()};
-$("capadd").onclick=addCap;$("capurl").onkeydown=e=>{if(e.key==="Enter")addCap()};
-$("capreset").onclick=()=>{CAPS=CAP_DEF.slice();saveCaps();loadCaptures()};
-
 /* ---------- Quick save ---------- */
 const norm=u=>{u=u.trim();return /^https?:\/\//i.test(u)?u:"https://"+u};
 $("chk").onclick=async()=>{
@@ -389,8 +352,7 @@ $("chk").onclick=async()=>{
     const r=await fetch("https://archive.org/wayback/available?url="+encodeURIComponent(u)),j=await r.json(),c=j.archived_snapshots&&j.archived_snapshots.closest;
     if(c){const t=c.timestamp,d=new Date(Date.UTC(+t.slice(0,4),+t.slice(4,6)-1,+t.slice(6,8),+t.slice(8,10),+t.slice(10,12),+t.slice(12,14)));
       const days=Math.floor((Date.now()-d)/864e5);
-      R.innerHTML=`Latest snapshot: <a href="${esc(c.url)}" target="_blank" rel="noopener">${d.toLocaleString()}</a> (${days<1?"today":days+" day"+(days===1?"":"s")+" ago"}). ${days>30?"It’s a bit stale, so consider saving again.":""}`;
-      cdxLatest(u.replace(/^https?:\/\//i,""),5,3650).then(cs=>{if(cs.length)R.innerHTML+=`<ul class="up caps" style="margin-top:6px">${cs.map(c=>capLine(c,tsDate(c[0]).toLocaleString([], {timeZone:TZ()}))).join("")}</ul>`}).catch(()=>{})}
+      R.innerHTML=`Latest snapshot: <a href="${esc(c.url)}" target="_blank" rel="noopener">${d.toLocaleString()}</a> (${days<1?"today":days+" day"+(days===1?"":"s")+" ago"}). ${days>30?"It’s a bit stale, so consider saving again.":""}`}
     else R.textContent="No snapshot found. This page hasn’t been archived yet.";
   }catch(e){R.textContent="Couldn’t reach the availability API."}
 };
@@ -715,13 +677,13 @@ async function cycle(){
   if(busy)return;busy=true;left=30;$("refresh").disabled=true;
   try{await runProbes()}finally{busy=false;lastRun=Date.now();$("refresh").disabled=false}
 }
-$("refresh").onclick=()=>{cycle();loadStats();loadCaptures()};
+$("refresh").onclick=()=>{cycle();loadStats()};
 setInterval(()=>{
   $("clock").textContent=new Date().toLocaleTimeString([], {timeZone:TZ()})+(useUTC?" UTC":"");
   left--;if(left<=0)cycle();
   $("next").textContent=(lastRun?"Last checked "+new Date(lastRun).toLocaleTimeString([], {timeZone:TZ()})+" · ":"")+"next in "+left+"s";
 },1000);
-renderTides();loadHist().then(()=>{renderHist();cycle()});renderAcc();loadStats();loadCaptures();loadRemote();setInterval(loadStats,300000);setInterval(loadCaptures,300000);setInterval(loadRemote,300000);
+renderTides();loadHist().then(()=>{renderHist();cycle()});renderAcc();loadStats();loadRemote();setInterval(loadStats,300000);setInterval(loadRemote,300000);
 </script>
 </body>
 </html>
