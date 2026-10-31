@@ -41,6 +41,11 @@ h2{font-size:12px;text-transform:uppercase;letter-spacing:1.5px;color:var(--mut)
 .two{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 @media(max-width:760px){.two{grid-template-columns:1fr}}
 .panel{background:var(--bg);border:1px solid var(--line);border-radius:3px;padding:16px}
+.feed-head{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.feed-controls{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.feed-controls label{display:flex;align-items:center;gap:5px;font-size:12px;color:var(--mut);white-space:nowrap}
+.feed-controls select{max-width:130px;padding:7px;border:1px solid var(--line);border-radius:3px;background:var(--field);color:var(--ink);font:inherit;font-size:12px}
+.feed-status{font-size:11px;color:var(--mut);white-space:nowrap}
 ul.up{list-style:none;margin:0;padding:0}ul.up li{padding:6px 0;border-bottom:1px solid var(--rule);font-size:13px}ul.up li:last-child{border:0}ul.up small{color:var(--mut);margin-left:6px;text-transform:uppercase;font-size:10px}
 .tide{display:flex;align-items:center;gap:18px;flex-wrap:wrap}
 .score{font-size:54px;font-weight:300;line-height:1}.tname{font-size:20px;font-weight:600}
@@ -116,7 +121,15 @@ h2{scroll-margin-top:60px}
   <div class="stats" id="stats"><div class="stat"><span>Loading…</span></div></div>
 
   <div class="two" style="margin-top:12px">
-    <div class="panel"><b>Latest uploads</b><ul class="up" id="latest" style="margin-top:8px"><li>Loading…</li></ul></div>
+    <div class="panel">
+      <div class="feed-head"><b>Latest uploads</b><div class="feed-controls">
+        <button class="btn" id="latestRefresh" title="Fetch the latest Internet Archive uploads now" aria-controls="latest">Refresh feed</button>
+        <label><input id="latestAuto" type="checkbox"> Auto</label>
+        <select id="latestInterval" aria-label="Auto-refresh interval" title="How often to refresh the latest uploads"><option value="1">1 min</option><option value="5" selected>5 min</option><option value="15">15 min</option><option value="30">30 min</option></select>
+      </div></div>
+      <div class="feed-status" id="latestStatus" role="status" aria-live="polite"></div>
+      <ul class="up" id="latest" style="margin-top:8px"><li>Loading…</li></ul>
+    </div>
     <div class="panel">
       <b>Quick save</b>
       <p class="note" style="margin:4px 0 10px">Check whether a page is already archived, then send it to Save Page Now.</p>
@@ -247,12 +260,23 @@ async function loadStats(){
     try{const r=await fetch(`https://archive.org/advancedsearch.php?q=mediatype%3A${t}&rows=0&output=json`);return[t,(await r.json()).response.numFound]}catch(e){return[t,null]}
   }));
   $("stats").innerHTML=out.map(([t,n])=>`<div class="stat" title="${n==null?"Couldn’t load this count":n.toLocaleString()+" items. "+STAT_T[t]}"><b>${n==null?"—":nf(n)}</b><span>${t==="web"?"web collections":t==="movies"?"videos":t==="texts"?"texts":t}</span></div>`).join("");
+}
+let latestBusy=false,latestLoaded=false;
+async function loadLatest(){
+  if(latestBusy)return;
+  latestBusy=true;$("latestRefresh").disabled=true;$("latestStatus").textContent="Refreshing…";
   try{
     const q="mediatype%3A(movies+OR+texts+OR+audio+OR+software)";
-    const r=await fetch(`https://archive.org/advancedsearch.php?q=${q}&fl%5B%5D=identifier&fl%5B%5D=title&fl%5B%5D=mediatype&sort%5B%5D=addeddate+desc&rows=7&output=json`);
+    const r=await fetch(`https://archive.org/advancedsearch.php?q=${q}&fl%5B%5D=identifier&fl%5B%5D=title&fl%5B%5D=mediatype&sort%5B%5D=addeddate+desc&rows=7&output=json`,{cache:"no-store"});
+    if(!r.ok)throw 0;
     const d=(await r.json()).response.docs;
+    if(!Array.isArray(d))throw 0;
     $("latest").innerHTML=d.map(x=>`<li><a href="https://archive.org/details/${encodeURIComponent(x.identifier)}" target="_blank" rel="noopener" title="Open archive.org/details/${esc(x.identifier)}">${esc(Array.isArray(x.title)?x.title[0]:(x.title||x.identifier))}</a><small>${esc(x.mediatype||"")}</small></li>`).join("");
-  }catch(e){$("latest").innerHTML="<li>Couldn’t load recent uploads.</li>"}
+    latestLoaded=true;$("latestStatus").textContent="Updated "+new Date().toLocaleTimeString();
+  }catch(e){
+    $("latestStatus").textContent="Refresh failed";
+    if(!latestLoaded)$("latest").innerHTML="<li>Couldn’t load recent uploads.</li>";
+  }finally{latestBusy=false;$("latestRefresh").disabled=false}
 }
 
 /* ---------- Archive Tides ---------- */
@@ -402,6 +426,21 @@ function renderHist(){
 
 /* ---------- alerts ---------- */
 const LS=(k,v)=>{try{if(v===undefined)return localStorage.getItem(k);localStorage.setItem(k,v)}catch(e){return null}};
+let latestTimer=null;
+function configureLatestRefresh(){
+  const enabled=$("latestAuto").checked,interval=+$("latestInterval").value;
+  $("latestInterval").disabled=!enabled;
+  LS("ia_latest_auto",enabled?"1":"0");LS("ia_latest_interval",String(interval));
+  if(latestTimer)clearInterval(latestTimer);
+  if(enabled)latestTimer=setInterval(loadLatest,interval*60000);
+}
+const latestInterval=LS("ia_latest_interval");
+if(["1","5","15","30"].includes(latestInterval))$("latestInterval").value=latestInterval;
+$("latestAuto").checked=LS("ia_latest_auto")!=="0";
+$("latestAuto").onchange=configureLatestRefresh;
+$("latestInterval").onchange=configureLatestRefresh;
+$("latestRefresh").onclick=loadLatest;
+configureLatestRefresh();
 let alertsOn=LS("ia_alerts")==="1",thr=+(LS("ia_thr")||30),prevTide=null;const streak={},wasDown={};
 function notify(t,b){
   if(!alertsOn)return;
@@ -677,13 +716,13 @@ async function cycle(){
   if(busy)return;busy=true;left=30;$("refresh").disabled=true;
   try{await runProbes()}finally{busy=false;lastRun=Date.now();$("refresh").disabled=false}
 }
-$("refresh").onclick=()=>{cycle();loadStats()};
+$("refresh").onclick=()=>{cycle();loadStats();loadLatest()};
 setInterval(()=>{
   $("clock").textContent=new Date().toLocaleTimeString([], {timeZone:TZ()})+(useUTC?" UTC":"");
   left--;if(left<=0)cycle();
   $("next").textContent=(lastRun?"Last checked "+new Date(lastRun).toLocaleTimeString([], {timeZone:TZ()})+" · ":"")+"next in "+left+"s";
 },1000);
-renderTides();loadHist().then(()=>{renderHist();cycle()});renderAcc();loadStats();loadRemote();setInterval(loadStats,300000);setInterval(loadRemote,300000);
+renderTides();loadHist().then(()=>{renderHist();cycle()});renderAcc();loadStats();loadLatest();loadRemote();setInterval(loadStats,300000);setInterval(loadRemote,300000);
 </script>
 </body>
 </html>

@@ -54,6 +54,7 @@ Hover anything for a short explanation. Highlights:
 - **Archive Tides**: a 0–100 score (low tide to storm surge), the calmest windows ahead, a next-24-hours chart, and a 7-day heatmap. Hatching and the optional numbers keep the heatmap readable without relying on color.
 - **Forecast accuracy**: tests the forecast on days it hasn't seen. Needs about 10 days of collector data.
 - **Quick save**: check whether a page is already archived and open Save Page Now for it. The Archive can only reach public pages.
+- **Latest uploads**: browse recent Archive items, refresh the feed manually, or enable automatic refresh at a 1-, 5-, 15-, or 30-minute interval. The setting is remembered in this browser.
 - **Display settings** (top bar): theme (auto, dark, light), times in local or UTC, and scores shown or hidden.
 - **Keys**: `R` refreshes; `Enter` runs Check or Load in the text boxes. Section links in the sub-bar jump around the page.
 - **Alerts** (top bar): notifications when a service fails twice in a row, recovers, or the tide drops below a level you choose. These only work while the page is open; if notifications are blocked you get in-page messages instead. For alerts with the page closed, use the collector's incident issues below.
